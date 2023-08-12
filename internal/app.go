@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"github.com/SvytDola/go-auth-jwt/internal/dto/auth"
 	"github.com/golang-jwt/jwt"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -39,13 +40,23 @@ func CreateApp(
 		options.Client().ApplyURI(mongoDbUrl),
 	)
 	if connectToDbError != nil {
-		panic(connectToDbError)
+		log.Fatalln(connectToDbError)
 	}
 
+	databaseNames, err := client.ListDatabaseNames(context.TODO(), nil)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	log.Println(databaseNames)
+
 	db := client.Database(database)
+
 	collection := db.Collection("refresh")
-	names, _ := db.ListCollectionNames(context.TODO(), nil, nil)
-	log.Println(names)
+	names, err := db.ListCollectionNames(context.TODO(), nil, nil)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	fmt.Println(names)
 	return App{
 		jwtSecret:              jwtSecret,
 		accessTokenExpiration:  accessTokenExpiration,

@@ -12,7 +12,7 @@ func main() {
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found")
 	}
-	jwtSecret := []byte(os.Getenv(""))
+	jwtSecret := []byte(os.Getenv("JWT_KEY"))
 	mongoDbUrl := os.Getenv("MONGODB_URI")
 	mongoDbDatabase := os.Getenv("MONGODB_DB_NAME")
 
@@ -26,6 +26,6 @@ func main() {
 
 	err := app.Run(":8080", nil)
 	if err != nil {
-		panic(err)
+		log.Fatalln(err)
 	}
 }
