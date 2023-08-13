@@ -2,6 +2,7 @@ package main_test
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"github.com/SvytDola/go-auth-jwt/internal"
@@ -10,6 +11,7 @@ import (
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"golang.org/x/crypto/bcrypt"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -105,11 +107,11 @@ func TestGetTokens(t *testing.T) {
 	}
 
 	var selected internal.RefreshTokenInfo
-	hex, errParseHex := primitive.ObjectIDFromHex(i.(string))
+	idFromHex, errParseHex := primitive.ObjectIDFromHex(i.(string))
 	if errParseHex != nil {
 		t.Error("Invalid refresh id")
 	}
-	errFindOne := app.RefreshTokenCollection.FindOne(context.TODO(), bson.D{{"_id", hex}}).Decode(&selected)
+	errFindOne := app.RefreshTokenCollection.FindOne(context.TODO(), bson.D{{"_id", idFromHex}}).Decode(&selected)
 
 	if errFindOne != nil {
 		t.Error(err)
@@ -117,4 +119,13 @@ func TestGetTokens(t *testing.T) {
 
 	log.Println(selected.RefreshToken)
 
+	decodeString, err := hex.DecodeString(selected.RefreshToken)
+	if err != nil {
+		t.Error(err)
+	}
+
+	compareError := bcrypt.CompareHashAndPassword(decodeString, []byte(authGetTokenResponse.RefreshToken))
+	if compareError != nil {
+		t.Error(compareError)
+	}
 }
