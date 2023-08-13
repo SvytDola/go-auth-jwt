@@ -1,12 +1,15 @@
 package main_test
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/SvytDola/go-auth-jwt/internal"
 	"github.com/SvytDola/go-auth-jwt/internal/dto/auth"
 	"github.com/golang-jwt/jwt"
 	"github.com/joho/godotenv"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -96,7 +99,22 @@ func TestGetTokens(t *testing.T) {
 
 	i := refreshTokenClaims["refresh_id"]
 	i2 := accessTokenClaims["refresh_id"]
+
 	if i != i2 {
 		t.Errorf("Difference refresh id between accessToken (%s) and refreshToken (%s).", i2, i)
 	}
+
+	var selected internal.RefreshTokenInfo
+	hex, errParseHex := primitive.ObjectIDFromHex(i.(string))
+	if errParseHex != nil {
+		t.Error("Invalid refresh id")
+	}
+	errFindOne := app.RefreshTokenCollection.FindOne(context.TODO(), bson.D{{"_id", hex}}).Decode(&selected)
+
+	if errFindOne != nil {
+		t.Error(err)
+	}
+
+	log.Println(selected.RefreshToken)
+
 }

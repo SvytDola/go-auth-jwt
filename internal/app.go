@@ -19,7 +19,7 @@ type App struct {
 	jwtSecret              []byte
 	accessTokenExpiration  time.Duration
 	refreshTokenExpiration time.Duration
-	refreshTokenCollection *mongo.Collection
+	RefreshTokenCollection *mongo.Collection
 }
 
 type RefreshTokenInfo struct {
@@ -49,7 +49,7 @@ func CreateApp(
 		jwtSecret:              jwtSecret,
 		accessTokenExpiration:  accessTokenExpiration,
 		refreshTokenExpiration: refreshTokenExpiration,
-		refreshTokenCollection: collection,
+		RefreshTokenCollection: collection,
 	}
 }
 
@@ -91,7 +91,7 @@ func (app *App) GetTokensHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Save hashed refresh token in database.
 	info := RefreshTokenInfo{RefreshToken: hex.EncodeToString(hashedRefreshToken), Id: refreshId}
-	inserted, err := app.refreshTokenCollection.InsertOne(context.TODO(), info)
+	inserted, err := app.RefreshTokenCollection.InsertOne(context.TODO(), info)
 	if err != nil {
 		http.Error(w, "Failed to insert refresh token in db.", http.StatusInternalServerError)
 		return
