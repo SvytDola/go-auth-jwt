@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/SvytDola/go-auth-jwt/internal"
 	"github.com/SvytDola/go-auth-jwt/internal/dto/auth"
+	"github.com/golang-jwt/jwt"
 	"github.com/joho/godotenv"
 	"log"
 	"net/http"
@@ -15,12 +16,13 @@ import (
 )
 
 var app internal.App
+var jwtSecret []byte
 
 func TestMain(m *testing.M) {
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found")
 	}
-	jwtSecret := []byte(os.Getenv(""))
+	jwtSecret = []byte(os.Getenv("JWT_KEY"))
 	mongoDbUrl := os.Getenv("MONGODB_URI")
 	mongoDbDatabase := os.Getenv("MONGODB_DB_NAME")
 
@@ -37,7 +39,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestGetTokens(t *testing.T) {
-	urlTemplate := "/auth/token?user_id=%s"
+	urlTemplate := "/auth/accessToken?user_id=%s"
 	guid := "7cbb9a33-224e-4945-8f0c-712e995374f9"
 
 	path := fmt.Sprintf(urlTemplate, guid)
@@ -69,4 +71,32 @@ func TestGetTokens(t *testing.T) {
 		t.Fatal(jsonError)
 	}
 
+	accessToken, err := jwt.Parse(authGetTokenResponse.AccessToken, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return jwtSecret, nil
+	})
+
+	accessTokenClaims, ok := accessToken.Claims.(jwt.MapClaims)
+	if !(ok && accessToken.Valid) {
+		t.Error("Invalid access token.")
+	}
+
+	refreshToken, err := jwt.Parse(authGetTokenResponse.AccessToken, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return jwtSecret, nil
+	})
+	refreshTokenClaims, okR := refreshToken.Claims.(jwt.MapClaims)
+	if !(okR && refreshToken.Valid) {
+		t.Error("Invalid refresh token.")
+	}
+
+	i := refreshTokenClaims["refresh_id"]
+	i2 := accessTokenClaims["refresh_id"]
+	if i != i2 {
+		t.Errorf("Difference refresh id between accessToken (%s) and refreshToken (%s).", i2, i)
+	}
 }

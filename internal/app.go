@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"github.com/SvytDola/go-auth-jwt/internal/dto/auth"
 	"github.com/golang-jwt/jwt"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -43,20 +42,9 @@ func CreateApp(
 		log.Fatalln(connectToDbError)
 	}
 
-	databaseNames, err := client.ListDatabaseNames(context.TODO(), nil)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	log.Println(databaseNames)
-
 	db := client.Database(database)
 
 	collection := db.Collection("refresh")
-	names, err := db.ListCollectionNames(context.TODO(), nil, nil)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	fmt.Println(names)
 	return App{
 		jwtSecret:              jwtSecret,
 		accessTokenExpiration:  accessTokenExpiration,
@@ -124,6 +112,9 @@ func (app *App) GetTokensHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to write in body", http.StatusInternalServerError)
 		return
 	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
 }
 
