@@ -12,6 +12,7 @@ services:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: example
 
+  # Only for development
   mongo-express:
     image: mongo-express
     restart: always

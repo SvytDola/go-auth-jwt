@@ -117,8 +117,6 @@ func TestGetTokens(t *testing.T) {
 		t.Error(err)
 	}
 
-	log.Println(selected.RefreshToken)
-
 	decodeString, err := hex.DecodeString(selected.RefreshToken)
 	if err != nil {
 		t.Error(err)
