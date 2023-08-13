@@ -144,7 +144,7 @@ func (app *App) generateRefreshToken(refreshTokenId string) (string, error) {
 	refreshTokenClaims := jwt.MapClaims{
 		"refresh_id": refreshTokenId,
 	}
-	return app.generateJwtToken(refreshTokenClaims, app.accessTokenExpiration)
+	return app.generateJwtToken(refreshTokenClaims, app.refreshTokenExpiration)
 }
 
 func (app *App) Run(addr string, handler http.Handler) error {
