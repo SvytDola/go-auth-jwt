@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"github.com/SvytDola/go-auth-jwt/internal/dto/auth"
 	"github.com/golang-jwt/jwt"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -54,6 +55,11 @@ func CreateApp(
 }
 
 func (app *App) GetTokensHandler(w http.ResponseWriter, r *http.Request) {
+
+	if r.Method != "GET" {
+		http.Error(w, "Request method not found.", http.StatusBadRequest)
+		return
+	}
 
 	// Get user refreshId from request.
 	userId := r.URL.Query().Get("user_id")
@@ -149,5 +155,103 @@ func (app *App) generateRefreshToken(refreshTokenId string) (string, error) {
 
 func (app *App) Run(addr string, handler http.Handler) error {
 	http.HandleFunc("/auth/token", app.GetTokensHandler)
+	http.HandleFunc("/auth/refresh-token", app.RefreshTokenHandler)
+
 	return http.ListenAndServe(addr, handler)
+}
+
+func (app *App) RefreshTokenHandler(w http.ResponseWriter, r *http.Request) {
+	// Check method
+	if r.Method != "GET" {
+		http.Error(w, "Request method not found.", http.StatusBadRequest)
+		return
+	}
+
+	// Get refresh token from request.
+	refreshToken := r.URL.Query().Get("refresh_token")
+	if refreshToken == "" {
+		http.Error(w, "Refresh token not sending.", http.StatusBadRequest)
+		return
+	}
+
+	// Get access token from request.
+	accessToken := r.URL.Query().Get("access_token")
+	if accessToken == "" {
+		http.Error(w, "Access token not sending.", http.StatusBadRequest)
+		return
+	}
+
+	refreshTokenAfterParse, err := jwt.Parse(refreshToken, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return app.jwtSecret, nil
+	})
+
+	if err != nil {
+		http.Error(w, "Invalid refresh token.", http.StatusBadRequest)
+		return
+	}
+
+	refreshTokenClaims, okR := refreshTokenAfterParse.Claims.(jwt.MapClaims)
+	if !(okR && refreshTokenAfterParse.Valid) {
+		http.Error(w, "Invalid refresh token.", http.StatusBadRequest)
+		return
+	}
+
+	timestamp := refreshTokenClaims["exp"].(float64)
+	if timestamp <= float64(time.Now().Unix()) {
+		http.Error(w, "Refresh token expired.", http.StatusBadRequest)
+		return
+	}
+
+	accessTokenAfterParse, err := jwt.Parse(accessToken, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return app.jwtSecret, nil
+	})
+
+	if err != nil {
+		http.Error(w, "Invalid refresh token.", http.StatusBadRequest)
+		return
+	}
+
+	accessTokenClaims, okR := accessTokenAfterParse.Claims.(jwt.MapClaims)
+	if !(okR && refreshTokenAfterParse.Valid) {
+		http.Error(w, "Invalid refresh token.", http.StatusBadRequest)
+		return
+	}
+
+	if accessTokenClaims["refresh_id"] != refreshTokenClaims["refresh_id"] {
+		http.Error(w, "Difference refresh id between accessToken (%s) and refreshToken (%s).", http.StatusBadRequest)
+		return
+	}
+
+	// Generate new access token.
+	id := accessTokenClaims["refresh_id"].(string)
+	userId := accessTokenClaims["user_id"].(string)
+	newAccessToken, accessTokenGenerationError := app.generateAccessToken(userId, id)
+	if accessTokenGenerationError != nil {
+		http.Error(w, "Failed to generate Access token.", http.StatusInternalServerError)
+		return
+	}
+
+	response := auth.RefreshTokenResponse{TokenType: "bearer", AccessToken: newAccessToken, ExpiresIn: app.accessTokenExpiration.Seconds()}
+
+	marshal, err := json.Marshal(response)
+	if err != nil {
+		http.Error(w, "Failed to convert json", http.StatusInternalServerError)
+		return
+	}
+
+	_, writeBodyError := w.Write(marshal)
+	if writeBodyError != nil {
+		http.Error(w, "Failed to write in body", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
 }

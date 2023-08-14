@@ -43,13 +43,18 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func TestGetTokens(t *testing.T) {
-	urlTemplate := "/auth/accessToken?user_id=%s"
+func TestCrudAuthJwt(t *testing.T) {
+	tokens := getTokensTestCase(t)
+	refreshTokenTestCase(t, tokens)
+}
+
+func getTokensTestCase(t *testing.T) auth.GetTokensResponse {
+	urlTemplate := "/auth/token?user_id=%s"
 	guid := "7cbb9a33-224e-4945-8f0c-712e995374f9"
 
-	path := fmt.Sprintf(urlTemplate, guid)
+	urlPath := fmt.Sprintf(urlTemplate, guid)
 
-	req, err := http.NewRequest("GET", path, nil)
+	req, err := http.NewRequest("GET", urlPath, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,10 +78,50 @@ func TestGetTokens(t *testing.T) {
 	jsonError := json.Unmarshal(response.Body.Bytes(), &authGetTokenResponse)
 
 	if jsonError != nil {
+		t.Fatal(response.Body.String())
+	}
+
+	checkTokens(t, authGetTokenResponse.AccessToken, authGetTokenResponse.RefreshToken)
+
+	return authGetTokenResponse
+}
+
+func refreshTokenTestCase(t *testing.T, tokens auth.GetTokensResponse) {
+	urlTemplate := "/auth/refresh-token?refresh_token=%s&access_token=%s"
+	urlPath := fmt.Sprintf(urlTemplate, tokens.RefreshToken, tokens.AccessToken)
+
+	req, err := http.NewRequest("GET", urlPath, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	response := httptest.NewRecorder()
+	handler := http.HandlerFunc(app.RefreshTokenHandler)
+
+	handler.ServeHTTP(response, req)
+
+	if status := response.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
+	}
+
+	expectedContentType := "application/json; charset=utf-8"
+	if contentType := response.Header().Get("Content-Type"); contentType != expectedContentType {
+		t.Errorf("handler returned wrong content type: got %v want %v", contentType, expectedContentType)
+	}
+
+	var refreshTokenResponse auth.RefreshTokenResponse
+
+	jsonError := json.Unmarshal(response.Body.Bytes(), &refreshTokenResponse)
+
+	if jsonError != nil {
 		t.Fatal(jsonError)
 	}
 
-	accessToken, err := jwt.Parse(authGetTokenResponse.AccessToken, func(token *jwt.Token) (interface{}, error) {
+	checkTokens(t, refreshTokenResponse.AccessToken, tokens.RefreshToken)
+}
+
+func checkTokens(t *testing.T, authAccessToken string, authRefreshToken string) {
+	accessToken, err := jwt.Parse(authAccessToken, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
@@ -88,7 +133,7 @@ func TestGetTokens(t *testing.T) {
 		t.Error("Invalid access token.")
 	}
 
-	refreshToken, err := jwt.Parse(authGetTokenResponse.AccessToken, func(token *jwt.Token) (interface{}, error) {
+	refreshToken, err := jwt.Parse(authRefreshToken, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
@@ -111,7 +156,9 @@ func TestGetTokens(t *testing.T) {
 	if errParseHex != nil {
 		t.Error("Invalid refresh id")
 	}
-	errFindOne := app.RefreshTokenCollection.FindOne(context.TODO(), bson.D{{"_id", idFromHex}}).Decode(&selected)
+	errFindOne := app.RefreshTokenCollection.
+		FindOne(context.TODO(), bson.D{{"_id", idFromHex}}).
+		Decode(&selected)
 
 	if errFindOne != nil {
 		t.Error(err)
@@ -122,7 +169,7 @@ func TestGetTokens(t *testing.T) {
 		t.Error(err)
 	}
 
-	compareError := bcrypt.CompareHashAndPassword(decodeString, []byte(authGetTokenResponse.RefreshToken))
+	compareError := bcrypt.CompareHashAndPassword(decodeString, []byte(authRefreshToken))
 	if compareError != nil {
 		t.Error(compareError)
 	}
