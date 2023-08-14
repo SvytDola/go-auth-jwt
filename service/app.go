@@ -1,11 +1,11 @@
-package internal
+package service
 
 import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/SvytDola/go-auth-jwt/internal/dto/auth"
+	"github.com/SvytDola/go-auth-jwt/service/dto/auth"
 	"github.com/golang-jwt/jwt"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -126,10 +126,6 @@ func (app *App) GetTokensHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-
-}
-
-func RefreshTokenHandler() {
 
 }
 

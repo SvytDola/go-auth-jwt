@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/SvytDola/go-auth-jwt/internal"
+	"github.com/SvytDola/go-auth-jwt/service"
 	"github.com/joho/godotenv"
 	"log"
 	"os"
@@ -16,7 +16,7 @@ func main() {
 	mongoDbUrl := os.Getenv("MONGODB_URI")
 	mongoDbDatabase := os.Getenv("MONGODB_DB_NAME")
 
-	app := internal.CreateApp(
+	app := service.CreateApp(
 		jwtSecret,
 		time.Hour*24,
 		time.Hour*24*7,

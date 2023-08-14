@@ -5,8 +5,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/SvytDola/go-auth-jwt/internal"
-	"github.com/SvytDola/go-auth-jwt/internal/dto/auth"
+	"github.com/SvytDola/go-auth-jwt/service"
+	"github.com/SvytDola/go-auth-jwt/service/dto/auth"
 	"github.com/golang-jwt/jwt"
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/bson"
@@ -20,7 +20,7 @@ import (
 	"time"
 )
 
-var app internal.App
+var app service.App
 var jwtSecret []byte
 
 func TestMain(m *testing.M) {
@@ -31,7 +31,7 @@ func TestMain(m *testing.M) {
 	mongoDbUrl := os.Getenv("MONGODB_URI")
 	mongoDbDatabase := os.Getenv("MONGODB_DB_NAME")
 
-	app = internal.CreateApp(
+	app = service.CreateApp(
 		jwtSecret,
 		time.Hour*24,
 		time.Hour*24*7,
@@ -151,7 +151,7 @@ func checkTokens(t *testing.T, authAccessToken string, authRefreshToken string) 
 		t.Errorf("Difference refresh id between accessToken (%s) and refreshToken (%s).", refreshIdFromAccessToken, refreshIdFromRefreshToken)
 	}
 
-	var selected internal.RefreshTokenInfo
+	var selected service.RefreshTokenInfo
 	idFromHex, errParseHex := primitive.ObjectIDFromHex(refreshIdFromRefreshToken.(string))
 	if errParseHex != nil {
 		t.Error("Invalid refresh id")
