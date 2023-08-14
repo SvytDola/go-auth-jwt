@@ -58,6 +58,11 @@ func (app *App) GetTokensHandler(w http.ResponseWriter, r *http.Request) {
 	// Get user refreshId from request.
 	userId := r.URL.Query().Get("user_id")
 
+	if userId == "" {
+		http.Error(w, "User id not sending.", http.StatusBadRequest)
+		return
+	}
+
 	// Generate random refresh refreshId.
 	refreshId := primitive.NewObjectID()
 	text, marshalIdError := refreshId.MarshalText()
@@ -115,6 +120,10 @@ func (app *App) GetTokensHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
+}
+
+func RefreshTokenHandler() {
 
 }
 
