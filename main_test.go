@@ -99,15 +99,15 @@ func TestGetTokens(t *testing.T) {
 		t.Error("Invalid refresh token.")
 	}
 
-	i := refreshTokenClaims["refresh_id"]
-	i2 := accessTokenClaims["refresh_id"]
+	refreshIdFromRefreshToken := refreshTokenClaims["refresh_id"]
+	refreshIdFromAccessToken := accessTokenClaims["refresh_id"]
 
-	if i != i2 {
-		t.Errorf("Difference refresh id between accessToken (%s) and refreshToken (%s).", i2, i)
+	if refreshIdFromRefreshToken != refreshIdFromAccessToken {
+		t.Errorf("Difference refresh id between accessToken (%s) and refreshToken (%s).", refreshIdFromAccessToken, refreshIdFromRefreshToken)
 	}
 
 	var selected internal.RefreshTokenInfo
-	idFromHex, errParseHex := primitive.ObjectIDFromHex(i.(string))
+	idFromHex, errParseHex := primitive.ObjectIDFromHex(refreshIdFromRefreshToken.(string))
 	if errParseHex != nil {
 		t.Error("Invalid refresh id")
 	}
