@@ -2,6 +2,17 @@ version: '3.1'
 
 services:
 
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      MONGODB_URI: "mongodb://root:example@mongo:27017"
+      MONGODB_DB_NAME: "database"
+      JWT_KEY: "b52a37502522f13b463b747614027902cc283d9254f1b417d4490582ac533d25d569885c"
+
   mongo:
     image: mongodb/mongodb-community-server:latest
     restart: always
